@@ -50,6 +50,9 @@ public class LocksetAnalysis extends AnalysisImpl {
 		public final Z z;
 		public Tuple(X x, Y y, Z z) { this.x = x; this.y = y; this.z = z; }
 	}
+	public class BeforeThreadInfo extends Tuple<Integer /*iid*/, Integer /*thread*/, Boolean /*isWrite*/> {
+		public BeforeThreadInfo(Integer x, Integer y, Boolean z) { super(x, y, z); }
+	}
 
 	/* Data per thread -- */
 	public HashMap<Integer /*thread*/, LinkedList<Integer> /*seq of iids*/>  stacks = new HashMap<Integer, LinkedList<Integer>>() ;
@@ -60,7 +63,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 	public HashMap<Long /*memory*/, HashSet<Integer/*set of locks*/>> candidates = new HashMap<Long, HashSet<Integer>>() ;
 	public HashMap<Long /*memory*/, MemoryState /*state*/> state = new HashMap<Long, MemoryState>() ;
 	public HashMap<Long /*memory*/, Integer /*thread*/> firstThread = new HashMap<Long, Integer>() ;
-	public HashMap<Long /*memory*/, Tuple<Integer /*iid*/, Integer /*thread*/, Boolean /*isWrite*/>> lastAccessLoc = new HashMap<Long, Tuple<Integer, Integer, Boolean>>() ;
+	public HashMap<Long /*memory*/, BeforeThreadInfo> lastAccessLoc = new HashMap<Long, BeforeThreadInfo>() ;
 	/* -- Data per memory */
 
 	public void initialize() {
@@ -85,12 +88,16 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 	}
 
-	private synchronized void reportDatarace(Integer iid, Integer thread, boolean isWrite, Integer lastiid, Integer lastThread, Boolean isBeforeWrite) {
+	private synchronized void reportDatarace(Integer iid, Integer thread, boolean isWrite, BeforeThreadInfo beforeInfo) {
 		System.out.print("LocksetAnalysis.java WARN: Detect data race at ");
 		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(iid));
 		System.out.print(" with " + (isWrite ? "write" : "read") + " operation\n");
 
 		printStackTrace(thread, iid);
+
+		Integer lastiid = beforeInfo.x;
+		Integer lastThread = beforeInfo.y;
+		Boolean isBeforeWrite = beforeInfo.z;
 
 		System.out.print("\t\tLast access from ");
 		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(lastiid));
@@ -164,8 +171,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		MemoryState currentState;
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
-		Integer lastiid = null, lastThread = null;
-		Boolean isBeforeWrite = false;
+		BeforeThreadInfo beforeInfo = null;
 
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
@@ -207,13 +213,12 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 
 		synchronized (lastAccessLoc) {
-			Tuple<Integer, Integer, Boolean> t = lastAccessLoc.get(memory);
-			if (t != null) { lastiid = t.x; lastThread = t.y; isBeforeWrite = t.z; }
-			lastAccessLoc.put(memory, new Tuple(iid, thread, false));
+			beforeInfo = lastAccessLoc.get(memory);
+			lastAccessLoc.put(memory, new BeforeThreadInfo(iid, thread, false));
 		}
 
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, false, lastiid, lastThread, isBeforeWrite);
+			reportDatarace(iid, thread, false, beforeInfo);
 		}
 	}
 
@@ -227,8 +232,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		MemoryState currentState;
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
-		Integer lastiid = null, lastThread = null;
-		Boolean isBeforeWrite = null;
+		BeforeThreadInfo beforeInfo = null;
 
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
@@ -275,13 +279,12 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 
 		synchronized (lastAccessLoc) {
-			Tuple<Integer, Integer, Boolean> t = lastAccessLoc.get(memory);
-			if (t != null) { lastiid = t.x; lastThread = t.y; isBeforeWrite = t.z; }
-			lastAccessLoc.put(memory, new Tuple(iid, thread, true));
+			beforeInfo = lastAccessLoc.get(memory);
+			lastAccessLoc.put(memory, new BeforeThreadInfo(iid, thread, true));
 		}
 
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, true, lastiid, lastThread, isBeforeWrite);
+			reportDatarace(iid, thread, true, beforeInfo);
 		}
 	}
 
