@@ -282,7 +282,13 @@
         <property name="javato.work.dir" value="${benchdir}"/>
         <property name="javato.app.main.class" value="benchmarks.testcases.ArrayListTest1"/>
         <antcall target="lockset-analysis"/>
-			</target>
+</target>
+    <target name="test_arraylist2_lockset">
+	    <echo message="# of potential and real races are the same"/>
+	    <property name="javato.work.dir" value="${benchdir}"/>
+	    <property name="javato.app.main.class" value="benchmarks.testcases.ArrayListTest2"/>
+	    <antcall target="lockset-analysis"/>
+    </target>
 
     <target name="atomfuzzer-analysis" description="Run hybrid lock related atomicity violation detector and ATOMfuzzer with 3 trials per potential error">
         <property name="javato.ignore.methods" value="true"/>
