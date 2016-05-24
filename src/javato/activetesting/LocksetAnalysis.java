@@ -44,6 +44,12 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 	public enum MemoryState {Virgin, Exclusive, Shared, SharedModified} ;
 
+	public class Tuple<X, Y> {
+		public final X x;
+		public final Y y;
+		public Tuple(X x, Y y) { this.x = x; this.y = y; }
+	}
+
 	/* Data per thread -- */
 	public HashMap<Integer /*thread*/, LinkedList<Integer> /*seq of iids*/>  stacks = new HashMap<Integer, LinkedList<Integer>>() ;
 	public HashMap<Integer /*thread*/, LinkedList<Integer> /*seq of locks*/> heldLocks = new HashMap<Integer, LinkedList<Integer>>() ;
@@ -53,7 +59,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 	public HashMap<Long /*memory*/, HashSet<Integer/*set of locks*/>> candidates = new HashMap<Long, HashSet<Integer>>() ;
 	public HashMap<Long /*memory*/, MemoryState /*state*/> state = new HashMap<Long, MemoryState>() ;
 	public HashMap<Long /*memory*/, Integer /*thread*/> firstThread = new HashMap<Long, Integer>() ;
-	public HashMap<Long /*memory*/, Integer /*iid*/> lastAccessLoc = new HashMap<Long, Integer>() ;
+	public HashMap<Long /*memory*/, Tuple<Integer /*iid*/, Integer /*thread*/>> lastAccessLoc = new HashMap<Long, Tuple<Integer, Integer>>() ;
 	/* -- Data per memory */
 
 	public void initialize() {
@@ -78,12 +84,18 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 	}
 
-	private void reportDatarace(Integer thread, Integer iid, boolean isWrite) {
-		System.out.print("LocksetAnalysis.java ERROR: Detect data race at ");
+	private synchronized void reportDatarace(Integer iid, Integer thread, Integer lastiid, Integer lastThread, boolean isWrite) {
+		System.out.print("LocksetAnalysis.java WARN: Detect data race at ");
 		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(iid));
 		System.out.print(" with " + (isWrite ? "write" : "read") + " operation\n");
 
 		printStackTrace(thread, iid);
+
+		System.out.print("\t\tLast access from ");
+		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(lastiid));
+		System.out.print("\n");
+
+		printStackTrace(lastThread, lastiid);
 	}
 
 	private synchronized void printStackTrace(Integer thread, Integer iid) {
@@ -152,6 +164,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		MemoryState currentState;
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
+		Integer lastiid = null, lastThread = null;
 
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
@@ -192,8 +205,14 @@ public class LocksetAnalysis extends AnalysisImpl {
 			candidates.put(memory, lockCandidate);
 		}
 
+		synchronized (lastAccessLoc) {
+			Tuple<Integer, Integer> t = lastAccessLoc.get(memory);
+			if (t != null) { lastiid = t.x; lastThread = t.y; }
+			lastAccessLoc.put(memory, new Tuple(iid, thread));
+		}
+
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, false);
+			reportDatarace(iid, thread, lastiid, lastThread, false);
 		}
 	}
 
@@ -207,6 +226,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		MemoryState currentState;
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
+		Integer lastiid = null, lastThread = null;
 
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
@@ -252,8 +272,14 @@ public class LocksetAnalysis extends AnalysisImpl {
 			candidates.put(memory, lockCandidate);
 		}
 
+		synchronized (lastAccessLoc) {
+			Tuple<Integer, Integer> t = lastAccessLoc.get(memory);
+			if (t != null) { lastiid = t.x; lastThread = t.y; }
+			lastAccessLoc.put(memory, new Tuple(iid, thread));
+		}
+
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, true);
+			reportDatarace(iid, thread, lastiid, lastThread, true);
 		}
 	}
 
