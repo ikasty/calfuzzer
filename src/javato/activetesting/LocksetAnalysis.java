@@ -44,10 +44,11 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 	public enum MemoryState {Virgin, Exclusive, Shared, SharedModified} ;
 
-	public class Tuple<X, Y> {
+	public class Tuple<X, Y, Z> {
 		public final X x;
 		public final Y y;
-		public Tuple(X x, Y y) { this.x = x; this.y = y; }
+		public final Z z;
+		public Tuple(X x, Y y, Z z) { this.x = x; this.y = y; this.z = z; }
 	}
 
 	/* Data per thread -- */
@@ -59,7 +60,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 	public HashMap<Long /*memory*/, HashSet<Integer/*set of locks*/>> candidates = new HashMap<Long, HashSet<Integer>>() ;
 	public HashMap<Long /*memory*/, MemoryState /*state*/> state = new HashMap<Long, MemoryState>() ;
 	public HashMap<Long /*memory*/, Integer /*thread*/> firstThread = new HashMap<Long, Integer>() ;
-	public HashMap<Long /*memory*/, Tuple<Integer /*iid*/, Integer /*thread*/>> lastAccessLoc = new HashMap<Long, Tuple<Integer, Integer>>() ;
+	public HashMap<Long /*memory*/, Tuple<Integer /*iid*/, Integer /*thread*/, Boolean /*isWrite*/>> lastAccessLoc = new HashMap<Long, Tuple<Integer, Integer, Boolean>>() ;
 	/* -- Data per memory */
 
 	public void initialize() {
@@ -84,7 +85,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 	}
 
-	private synchronized void reportDatarace(Integer iid, Integer thread, Integer lastiid, Integer lastThread, boolean isWrite) {
+	private synchronized void reportDatarace(Integer iid, Integer thread, boolean isWrite, Integer lastiid, Integer lastThread, Boolean isBeforeWrite) {
 		System.out.print("LocksetAnalysis.java WARN: Detect data race at ");
 		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(iid));
 		System.out.print(" with " + (isWrite ? "write" : "read") + " operation\n");
@@ -93,9 +94,8 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 		System.out.print("\t\tLast access from ");
 		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(lastiid));
-		System.out.print("\n");
-
-		printStackTrace(lastThread, lastiid);
+		System.out.print(" with " + (isBeforeWrite ? "write" : "read") + " operation");
+		System.out.print(" by thread#" + lastThread + "\n");
 	}
 
 	private synchronized void printStackTrace(Integer thread, Integer iid) {
@@ -165,6 +165,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
 		Integer lastiid = null, lastThread = null;
+		Boolean isBeforeWrite = false;
 
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
@@ -206,13 +207,13 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 
 		synchronized (lastAccessLoc) {
-			Tuple<Integer, Integer> t = lastAccessLoc.get(memory);
-			if (t != null) { lastiid = t.x; lastThread = t.y; }
-			lastAccessLoc.put(memory, new Tuple(iid, thread));
+			Tuple<Integer, Integer, Boolean> t = lastAccessLoc.get(memory);
+			if (t != null) { lastiid = t.x; lastThread = t.y; isBeforeWrite = t.z; }
+			lastAccessLoc.put(memory, new Tuple(iid, thread, false));
 		}
 
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, lastiid, lastThread, false);
+			reportDatarace(iid, thread, false, lastiid, lastThread, isBeforeWrite);
 		}
 	}
 
@@ -227,6 +228,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
 		Integer lastiid = null, lastThread = null;
+		Boolean isBeforeWrite = null;
 
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
@@ -273,13 +275,13 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 
 		synchronized (lastAccessLoc) {
-			Tuple<Integer, Integer> t = lastAccessLoc.get(memory);
-			if (t != null) { lastiid = t.x; lastThread = t.y; }
-			lastAccessLoc.put(memory, new Tuple(iid, thread));
+			Tuple<Integer, Integer, Boolean> t = lastAccessLoc.get(memory);
+			if (t != null) { lastiid = t.x; lastThread = t.y; isBeforeWrite = t.z; }
+			lastAccessLoc.put(memory, new Tuple(iid, thread, true));
 		}
 
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, lastiid, lastThread, true);
+			reportDatarace(iid, thread, true, lastiid, lastThread, isBeforeWrite);
 		}
 	}
 
