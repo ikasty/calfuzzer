@@ -47,4 +47,28 @@ abstract public class CheckerAnalysisImpl extends Thread implements Analysis {
     public void run() {
         finish();
     }
+
+    /* Default implementations. */
+    public void initialize() { }
+    public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) { }
+    public void lockAfter(Integer iid, Integer thread, Integer lock, Object actualLock) { }
+    public void unlockAfter(Integer iid, Integer thread, Integer lock) { }
+    public void newExprAfter(Integer iid, Integer object, Integer objOnWhichMethodIsInvoked) { }
+    public void methodEnterBefore(Integer iid, Integer thread, String method) { }
+    public void methodExitAfter(Integer iid, Integer thread, String method) { }
+    public void startBefore(Integer iid, Integer parent, Integer child) { }
+    public void startAfter(Integer iid, Integer parent, Object child) { }
+    public void waitBefore(Integer iid, Integer thread, Integer lock) { }
+    public void waitAfter(Integer iid, Integer thread, Integer lock) { }
+    public void notifyBefore(Integer iid, Integer thread, Integer lock) { }
+    public void notifyAllBefore(Integer iid, Integer thread, Integer lock) { }
+    public void joinAfter(Integer iid, Integer parent, Integer child) { }
+    public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) { }
+    public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) { }
+    public void writeAfter(Integer iid, Thread thread, String local, Object value, String type) { }
+    public void openDeterministicBlock(Integer bid) { }
+    public void closeDeterministicBlock(Integer bid) { }
+    public void requireDeterministic(Integer thread, Object invariant) { }
+    public void assertDeterministic(Integer thread, Object invariant) { }
+    public void finish() { }
 }

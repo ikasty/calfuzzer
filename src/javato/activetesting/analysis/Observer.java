@@ -3,10 +3,7 @@ package javato.activetesting.analysis;
 import javato.activetesting.common.Parameters;
 import javato.activetesting.common.WeakIdentityHashMap;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.*;
 import java.util.ArrayList;
 
 /**
@@ -43,8 +40,8 @@ import java.util.ArrayList;
  */
 public class Observer {
 
-    private static WeakIdentityHashMap objectMap = new WeakIdentityHashMap();
-    private static int currentId = Parameters.readInteger(Parameters.usedIdFile, 1);
+    private static WeakIdentityHashMap objectMap = new WeakIdentityHashMap(3511);
+    private static int currentId = readInteger(Parameters.usedObjectId, 1);
     private static ArrayList<String> iidToLineMap = null;
 
     public static Long idInt(int f, int s) {
@@ -98,4 +95,32 @@ public class Observer {
         return idInt(uniqueId(o), x);
     }
 
+    static public int readInteger(String filename, int defaultVal) {
+        try {
+            BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+            int ret = Integer.parseInt(in.readLine());
+            in.close();
+            return ret;
+        } catch (Exception e) {
+        }
+        return 0;
+    }
+
+    public static void writeIntegerList(String file, int val) {
+        try {
+            PrintWriter pw = new PrintWriter(new FileWriter(file));
+            for (int i = 1; i < val; i++) {
+                pw.print(i + ",");
+            }
+            if (val > 0)
+                pw.println(val);
+            else
+                pw.println();
+            pw.close();
+        } catch (IOException e) {
+            System.err.println("Error while writing to " + file);
+            System.exit(1);
+        }
+
+    }
 }

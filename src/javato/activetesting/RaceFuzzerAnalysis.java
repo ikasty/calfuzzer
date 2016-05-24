@@ -1,15 +1,16 @@
 package javato.activetesting;
 
+import javato.activetesting.activechecker.ActiveChecker;
 import javato.activetesting.analysis.CheckerAnalysisImpl;
 import javato.activetesting.common.Parameters;
+import javato.activetesting.hybridracedetection.CommutativePair;
+import javato.activetesting.hybridracedetection.HybridRaceTracker;
+import javato.activetesting.racefuzzer.RaceChecker;
 
-import java.util.Set;
 import java.util.LinkedHashSet;
-import java.util.Collection;
-
-import javato.activetesting.activechecker.ActiveChecker;
-import javato.activetesting.HybridRaceTracker;
-import javato.activetesting.analysis.Observer;
+import java.io.PrintWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * Copyright (c) 2007-2008,
@@ -48,109 +49,99 @@ public class RaceFuzzerAnalysis extends CheckerAnalysisImpl {
 
     public void initialize() {
         if (Parameters.errorId >= 0) {
-//    Your code goes here.
-//    In my implementation I had the following code:
             LinkedHashSet<CommutativePair> seenRaces = HybridRaceTracker.getRacesFromFile();
             racePair = (CommutativePair) (seenRaces.toArray())[Parameters.errorId - 1];
-            //System.out.println("=-= seenRaces: " + seenRaces
-            //    + " racePair: " + racePair);
         }
+        //System.out.println("IID pairs "+racePair);
     }
 
-    public void lockBefore(Integer iid, Integer thread, Integer lock) {
-//  ignore this
+    public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) {
+        if (Parameters.trackLockRaces) {
+            if (racePair != null && racePair.contains(iid)) {
+                synchronized (ActiveChecker.lock) {
+                    (new RaceChecker((long)lock, true, iid, true)).check();
+                }
+                ActiveChecker.blockIfRequired();
+            }
+        }
     }
 
     public void unlockAfter(Integer iid, Integer thread, Integer lock) {
-//  ignore this
     }
 
     public void newExprAfter(Integer iid, Integer object, Integer objOnWhichMethodIsInvoked) {
-//  ignore this
     }
 
-    public void methodEnterBefore(Integer iid) {
-//  ignore this
+    public void methodEnterBefore(Integer iid, Integer thread) {
     }
 
-    public void methodExitAfter(Integer iid) {
-//  ignore this
+    public void methodExitAfter(Integer iid, Integer thread) {
     }
 
     public void startBefore(Integer iid, Integer parent, Integer child) {
-//  ignore this
     }
 
+    public void startAfter(Integer iid, Integer parent, Object child) {
+        try {
+            Thread.sleep(Parameters.afterStartSleepDuration);
+        } catch (InterruptedException ex) {
+
+        }
+    }
+    
     public void waitAfter(Integer iid, Integer thread, Integer lock) {
-//  ignore this
     }
 
     public void notifyBefore(Integer iid, Integer thread, Integer lock) {
-//  ignore this
     }
 
     public void notifyAllBefore(Integer iid, Integer thread, Integer lock) {
-//  ignore this
     }
 
     public void joinAfter(Integer iid, Integer parent, Integer child) {
-//  ignore this
     }
 
-    public void readBefore(Integer iid, Integer thread, Long memory) {
-//    Your code goes here.
-//    In my implementation I had the following code:
+    public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
         if (racePair != null && racePair.contains(iid)) {
+            //System.out.println("read ...");
             synchronized (ActiveChecker.lock) {
-                (new RaceChecker(memory, false, iid)).check();
+                (new RaceChecker(memory, false, iid, false)).check();
             }
             ActiveChecker.blockIfRequired();
         }
     }
 
-    public void writeBefore(Integer iid, Integer thread, Long memory) {
-//    Your code goes here.
-//    In my implementation I had the following code:
+    public void readAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+		}
+
+
+    public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
         if (racePair != null && racePair.contains(iid)) {
+            //System.out.println("write ...");
             synchronized (ActiveChecker.lock) {
-                (new RaceChecker(memory, true, iid)).check();
+                (new RaceChecker(memory, true, iid, false)).check();
             }
             ActiveChecker.blockIfRequired();
         }
     }
+
+    public void writeAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+		}
 
     public void finish() {
-//  ignore this
+        writeStat(Parameters.ERROR_STAT_FILE);
     }
-}
 
-class RaceChecker extends ActiveChecker {
-    public Long memory;
-    public boolean isWrite;
-    public Integer iid;
-    RaceChecker(Long memory, boolean isWrite, Integer iid) {
-      this.memory = memory;
-      this.isWrite = isWrite;
-      this.iid = iid;
-    }
-    public void check(Collection<ActiveChecker> checkers) {
-      for (ActiveChecker ac : checkers) {
-        if (ac instanceof RaceChecker) {
-          RaceChecker rc = (RaceChecker) ac;
-          if (this.isRace(rc)) {
-            CommutativePair thisRace = new CommutativePair(this.iid, rc.iid);
-            System.out.println("Found real race between " + thisRace);
-            if (this.rand.nextBoolean()) {
-              this.block(0);
-              rc.unblock(0);
-            }
-            return;
-          }
+    public static void writeStat(String file) {
+        try {
+            PrintWriter pw = new PrintWriter(new FileWriter(file,true));
+            pw.print(Parameters.errorId+":"+RaceChecker.isRace+" ");
+            pw.close();
+        } catch (IOException e) {
+            System.err.println("Error while writing to " + file);
+            System.exit(1);
         }
-      }
-      block(0);
+
     }
-    public boolean isRace(RaceChecker rhs) {
-      return this.memory.equals(rhs.memory) && (this.isWrite || rhs.isWrite);
-    }
+
 }

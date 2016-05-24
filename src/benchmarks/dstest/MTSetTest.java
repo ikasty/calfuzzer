@@ -1,8 +1,8 @@
 package benchmarks.dstest;
 
-import benchmarks.instrumented.java.util.Collections;
-import benchmarks.instrumented.java.util.HashSet;
-import benchmarks.instrumented.java.util.Set;
+import benchmarks.instrumented.java15.util.Collections;
+import benchmarks.instrumented.java15.util.HashSet;
+import benchmarks.instrumented.java15.util.Set;
 import benchmarks.jpf_test_cases.MyRandom;
 
 /**

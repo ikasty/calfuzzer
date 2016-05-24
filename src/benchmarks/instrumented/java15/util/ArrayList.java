@@ -474,7 +474,7 @@ public class ArrayList<E> extends AbstractList<E>
 	Object[] a = c.toArray();
         int numNew = a.length;
 	ensureCapacity(size + numNew);  // Increments modCount
-        System.arraycopy(a, 0, elementData, size, numNew);
+        System.arraycopy(a, 0, elementData, size, c.size()/*numNew*/);
         size += numNew;
 	return numNew != 0;
     }

@@ -1,6 +1,6 @@
 package benchmarks.dstest;
 
-import benchmarks.instrumented.java.util.*;
+import benchmarks.instrumented.java15.util.*;
 
 /**
  * Created by IntelliJ IDEA.

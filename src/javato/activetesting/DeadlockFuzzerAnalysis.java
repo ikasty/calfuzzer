@@ -78,7 +78,7 @@ public class DeadlockFuzzerAnalysis extends CheckerAnalysisImpl {
     }
 
 
-    public void lockBefore(Integer iid, Integer thread, Integer lock) {
+    public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) {
         synchronized (ActiveChecker.lock) {
             if (ignoreRentrantLock.lockBefore(thread, lock)) {
                 boolean isDeadlock = lsTracker.lockBefore(iid, thread, lock);
@@ -108,10 +108,10 @@ public class DeadlockFuzzerAnalysis extends CheckerAnalysisImpl {
     public void newExprAfter(Integer iid, Integer object, Integer objOnWhichMethodIsInvoked) {
     }
 
-    public void methodEnterBefore(Integer iid) {
+    public void methodEnterBefore(Integer iid, Integer thread) {
     }
 
-    public void methodExitAfter(Integer iid) {
+    public void methodExitAfter(Integer iid, Integer thread) {
     }
 
     public void startBefore(Integer iid, Integer parent, Integer child) {
@@ -129,10 +129,16 @@ public class DeadlockFuzzerAnalysis extends CheckerAnalysisImpl {
     public void joinAfter(Integer iid, Integer parent, Integer child) {
     }
 
-    public void readBefore(Integer iid, Integer thread, Long memory) {
+    public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
     }
 
-    public void writeBefore(Integer iid, Integer thread, Long memory) {
+    public void readAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+		}
+
+    public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+    }
+
+    public void writeAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
     }
 
     public void finish() {

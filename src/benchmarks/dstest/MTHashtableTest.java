@@ -1,6 +1,6 @@
 package benchmarks.dstest;
 
-import benchmarks.instrumented.java.util.Hashtable;
+import benchmarks.instrumented.java15.util.Hashtable;
 import benchmarks.jpf_test_cases.MyRandom;
 
 /**

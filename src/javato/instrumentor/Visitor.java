@@ -1,6 +1,7 @@
 package javato.instrumentor;
 
 import javato.instrumentor.contexts.*;
+import javato.activetesting.common.Parameters;
 import soot.*;
 import soot.jimple.*;
 import soot.tagkit.*;
@@ -88,14 +89,14 @@ public class Visitor {
         observerClass = s;
     }
 
-    public static void dumpIidToLine(String file) {
+    public static void dumpIidToLine() {
         ObjectOutputStream out = null;
         PrintStream out2 = null;
         try {
-            out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+            out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(Parameters.iidToLineMapFile)));
             out.writeObject(iidToLineMap);
             out.close();
-            out2 = new PrintStream(new BufferedOutputStream(new FileOutputStream(file + ".html")));
+            out2 = new PrintStream(new BufferedOutputStream(new FileOutputStream(Parameters.iidToLineMapFile + ".html")));
             out2.println("<html><body>");
             int i = 0;
             for (String s : iidToLineMap) {
@@ -444,6 +445,17 @@ public class Visitor {
         }
     }
 
+    protected void addCallWithString(Chain units, Stmt s, String methodName, Value v, boolean before) {
+        SootMethodRef mr;
+
+        mr = Scene.v().getMethod("<" + observerClass + ": void " + methodName + "(int,java.lang.String)>").makeRef();
+        if (before) {
+            units.insertBefore(Jimple.v().newInvokeStmt(Jimple.v().newStaticInvokeExpr(mr, IntConstant.v(getAndIncCounter()), v)), s);
+        } else {
+            units.insertAfter(Jimple.v().newInvokeStmt(Jimple.v().newStaticInvokeExpr(mr, IntConstant.v(getAndIncCounter()), v)), s);
+        }
+    }
+
     protected void addCallWithObjectInt(Chain units, Stmt s, String methodName, Value v1, Value v2, boolean before) {
         SootMethodRef mr;
 
@@ -467,6 +479,21 @@ public class Visitor {
         args.addLast(v1);
         args.addLast(v2);
         mr = Scene.v().getMethod("<" + observerClass + ": void " + methodName + "(int,int,java.lang.Object)>").makeRef();
+        if (before) {
+            units.insertBefore(Jimple.v().newInvokeStmt(Jimple.v().newStaticInvokeExpr(mr, args)), s);
+        } else {
+            units.insertAfter(Jimple.v().newInvokeStmt(Jimple.v().newStaticInvokeExpr(mr, args)), s);
+        }
+    }
+
+    protected void addCallWithIntString(Chain units, Stmt s, String methodName, Value v1, Value v2, boolean before) {
+        SootMethodRef mr;
+
+        LinkedList args = new LinkedList();
+        args.addLast(IntConstant.v(getAndIncCounter()));
+        args.addLast(v1);
+        args.addLast(v2);
+        mr = Scene.v().getMethod("<" + observerClass + ": void " + methodName + "(int,int,java.lang.String)>").makeRef();
         if (before) {
             units.insertBefore(Jimple.v().newInvokeStmt(Jimple.v().newStaticInvokeExpr(mr, args)), s);
         } else {
@@ -618,7 +645,7 @@ public class Visitor {
     }
 
     public void writeSymTblSize() {
-        writeInteger("javato.usedids", st.getSize());
+        writeInteger(Parameters.usedObjectId, st.getSize());
     }
 
     public static void writeInteger(String file, int val) {

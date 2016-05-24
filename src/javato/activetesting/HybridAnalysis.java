@@ -2,18 +2,12 @@ package javato.activetesting;
 
 import javato.activetesting.activechecker.ActiveChecker;
 import javato.activetesting.analysis.AnalysisImpl;
-import javato.activetesting.common.Parameters;
-
+import javato.activetesting.hybridracedetection.HybridRaceTracker;
 import javato.activetesting.lockset.LockSet;
 import javato.activetesting.lockset.LockSetTracker;
 import javato.activetesting.reentrant.IgnoreRentrantLock;
-import javato.activetesting.HybridRaceTracker;
-import javato.activetesting.VectorClockTracker;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.util.TreeMap;
-
+import javato.activetesting.vc.VectorClockTracker;
+import javato.activetesting.common.Parameters;
 
 /**
  * Copyright (c) 2007-2008,
@@ -48,17 +42,15 @@ import java.util.TreeMap;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 public class HybridAnalysis extends AnalysisImpl {
-//    need to declare data structures
-//    In my implementation I had the following datastructure
+    //private ContextIndexingTracker ciTracker;
     private VectorClockTracker vcTracker;
     private LockSetTracker lsTracker;
     private IgnoreRentrantLock ignoreRentrantLock;
     private HybridRaceTracker eb;
 
     public void initialize() {
+        //ciTracker = new ContextIndexingTracker();
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
             vcTracker = new VectorClockTracker();
             lsTracker = new LockSetTracker();
             ignoreRentrantLock = new IgnoreRentrantLock();
@@ -66,20 +58,39 @@ public class HybridAnalysis extends AnalysisImpl {
         }
     }
 
-    public void lockBefore(Integer iid, Integer thread, Integer lock) {
+    public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) {
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
             if (ignoreRentrantLock.lockBefore(thread, lock)) {
+//                if (Parameters.trackLockRaces) {
+//                    LockSet ls = lsTracker.getLockSet(thread);
+//                    Long mem = (long) lock;
+//                    eb.checkRace(iid, thread, mem , false, vcTracker.getVectorClock(thread), ls,true,false);
+//                    eb.addEvent(iid, thread, mem, false, vcTracker.getVectorClock(thread), ls);
+//                }
                 boolean isDeadlock = lsTracker.lockBefore(iid, thread, lock);
             }
         }
     }
 
+    public void waitBefore(Integer iid, Integer thread, Integer lock) {
+        synchronized (ActiveChecker.lock) {
+//            if (Parameters.trackLockRaces) {
+//                LockSet ls = lsTracker.getLockSet(thread);
+//                Long mem = (long) lock;
+//                eb.checkRace(iid, thread, mem , false, vcTracker.getVectorClock(thread), ls,true,false);
+//                eb.addEvent(iid, thread, mem, false, vcTracker.getVectorClock(thread), ls);
+//            } else {
+                Integer acquireIid = lsTracker.getLockAcquireIID(thread,lock);
+                Long mem = (long) lock;
+                eb.checkRace(acquireIid, thread, mem , false, vcTracker.getVectorClock(thread), LockSet.emptySet,true,false);
+                eb.addEvent(acquireIid, thread, mem, false, vcTracker.getVectorClock(thread), LockSet.emptySet);
+
+//            }
+        }
+    }
+
     public void unlockAfter(Integer iid, Integer thread, Integer lock) {
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
             if (ignoreRentrantLock.unlockAfter(thread, lock)) {
                 lsTracker.unlockAfter(thread);
             }
@@ -87,110 +98,92 @@ public class HybridAnalysis extends AnalysisImpl {
     }
 
     public void newExprAfter(Integer iid, Integer object, Integer objOnWhichMethodIsInvoked) {
-//  ignore this
+        //ciTracker.newExprAfter(iid, object, 3); //@todo 3 must be parameterized
     }
 
-    public void methodEnterBefore(Integer iid) {
-//  ignore this
+    public void methodEnterBefore(Integer iid, Integer thread) {
+        //ciTracker.methodEnterBefore(iid);
     }
 
-    public void methodExitAfter(Integer iid) {
-//  ignore this
+    public void methodExitAfter(Integer iid, Integer thread) {
+        //ciTracker.methodExitAfter(iid);
     }
 
     public void startBefore(Integer iid, Integer parent, Integer child) {
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
-            System.out.println("startBefore: " +
-                "thread" + parent + " forks thread" + child + " @" +
-                javato.activetesting.analysis.Observer.getIidToLine(iid)
-                + "[" + iid + "]");
             vcTracker.startBefore(parent, child);
         }
     }
 
     public void waitAfter(Integer iid, Integer thread, Integer lock) {
-        synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
-            System.out.println("waitAfter: " +
-                "thread" + thread + "@" +
-                javato.activetesting.analysis.Observer.getIidToLine(iid)
-                + "[" + iid + "]");
-            vcTracker.waitAfter(thread, lock);
-        }
+//        if (!Parameters.trackLockRaces) {
+//            synchronized (ActiveChecker.lock) {
+//                vcTracker.waitAfter(thread, lock);
+//            }
+//        }
     }
 
     public void notifyBefore(Integer iid, Integer thread, Integer lock) {
+//        if (!Parameters.trackLockRaces) {
+//            synchronized (ActiveChecker.lock) {
+//                vcTracker.notifyBefore(thread, lock);
+//            }
+//        }
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
-            System.out.println("notifyBefore: " +
-                "thread" + thread + "@" +
-                javato.activetesting.analysis.Observer.getIidToLine(iid)
-                + "[" + iid + "]");
-            vcTracker.notifyBefore(thread, lock);
-        }
+//            if (!Parameters.trackLockRaces) {
+                Integer acquireIid = lsTracker.getLockAcquireIID(thread,lock);
+                Long mem = (long) lock;
+                eb.checkRace(acquireIid, thread, mem , true, vcTracker.getVectorClock(thread), LockSet.emptySet,true,false);
+                eb.addEvent(acquireIid, thread, mem, true, vcTracker.getVectorClock(thread), LockSet.emptySet);
+            }
+//        }
     }
 
     public void notifyAllBefore(Integer iid, Integer thread, Integer lock) {
+//        if (!Parameters.trackLockRaces) {
+//            synchronized (ActiveChecker.lock) {
+//                vcTracker.notifyBefore(thread, lock);
+//            }
+//        }
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
-            System.out.println("notifyAllBefore: " +
-                "thread" + thread + "@" +
-                javato.activetesting.analysis.Observer.getIidToLine(iid)
-                + "[" + iid + "]");
-            vcTracker.notifyBefore(thread, lock);
+//            if (!Parameters.trackLockRaces) {
+                Integer acquireIid = lsTracker.getLockAcquireIID(thread,lock);
+                Long mem = (long) lock;
+                eb.checkRace(acquireIid, thread, mem , true, vcTracker.getVectorClock(thread), LockSet.emptySet,true,false);
+                eb.addEvent(acquireIid, thread, mem, true, vcTracker.getVectorClock(thread), LockSet.emptySet);
+//            }
         }
     }
 
     public void joinAfter(Integer iid, Integer parent, Integer child) {
         synchronized (ActiveChecker.lock) {
-            System.out.println("joinAfter: " +
-                "thread" + parent + " joins thread" + child + " @" +
-                javato.activetesting.analysis.Observer.getIidToLine(iid)
-                + "[" + iid + "]");
-//    Your code goes here.
-//    In my implementation I had the following code:
             vcTracker.joinAfter(parent, child);
         }
     }
 
-    public void readBefore(Integer iid, Integer thread, Long memory) {
+    public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
         synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
             LockSet ls = lsTracker.getLockSet(thread);
-            eb.checkRace(iid, thread, memory, false, vcTracker.getVectorClock(thread), ls);
-            eb.addEvent(iid, thread, memory, false, vcTracker.getVectorClock(thread), ls);
-        }
-    }
-
-    public void writeBefore(Integer iid, Integer thread, Long memory) {
-        synchronized (ActiveChecker.lock) {
-//    Your code goes here.
-//    In my implementation I had the following code:
-            LockSet ls = lsTracker.getLockSet(thread);
-            eb.checkRace(iid, thread, memory, true, vcTracker.getVectorClock(thread), ls);
+            eb.checkRace(iid, thread, memory, true, vcTracker.getVectorClock(thread), ls, false,isVolatile);
             eb.addEvent(iid, thread, memory, true, vcTracker.getVectorClock(thread), ls);
         }
     }
 
+    public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+        synchronized (ActiveChecker.lock) {
+            LockSet ls = lsTracker.getLockSet(thread);
+            eb.checkRace(iid, thread, memory, false, vcTracker.getVectorClock(thread), ls, false,isVolatile);
+            eb.addEvent(iid, thread, memory, false, vcTracker.getVectorClock(thread), ls);
+        }
+    }
+
+    public void writeAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+		}
+
+
     public void finish() {
         synchronized (ActiveChecker.lock) {
-            int nRaces=0; // nRaces must be equal to the number races detected by the hybrid race detector
-//    Your code goes here.
-//    In my implementation I had the following code:
-            nRaces = eb.dumpRaces();
-            System.out.println("*--> HybridAnalysis reveals " + nRaces
-                + " potential races");
-//    The following method call creates a file "error.list" containing the list of numbers "1,2,3,...,nRaces"
-//    This file is used by run.xml to initialize Parameters.errorId with a number from from the list.
-//    Parameters.errorId tells RaceFuzzer the id of the race that RaceFuzzer should try to create
-            Parameters.writeIntegerList(Parameters.ERROR_LIST_FILE, nRaces);
+            eb.dumpRaces();
         }
     }
 }
-

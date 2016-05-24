@@ -1,6 +1,7 @@
 package javato.activetesting.analysis;
 
 import javato.activetesting.common.Parameters;
+import javato.activetesting.common.IIDAccessCounter;
 
 import java.util.LinkedList;
 
@@ -39,7 +40,10 @@ import java.util.LinkedList;
  */
 public class ObserverForActiveTesting extends Observer {
     private static SyncMethodCache cache = new SyncMethodCache();
-    private static Analysis analysis;
+    public static Analysis analysis;
+    //private static AtomicLong counter = new AtomicLong(0);
+    //private static boolean stopRW = false;
+    private static IIDAccessCounter counters = new IIDAccessCounter();
 
     static {
         System.out.println("Analysis class " + Parameters.analysisClass);
@@ -69,13 +73,12 @@ public class ObserverForActiveTesting extends Observer {
         }
     };
 
-
-    public static void myMethodEnterBefore(int iid) {
-        analysis.methodEnterBefore(iid);
+    public static void myMethodEnterBefore(int iid, String sig) {
+        analysis.methodEnterBefore(iid, uniqueId(Thread.currentThread()), sig);
     }
 
-    public static void myMethodExitAfter(int iid) {
-        analysis.methodExitAfter(iid);
+    public static void myMethodExitAfter(int iid, String sig) {
+        analysis.methodExitAfter(iid, uniqueId(Thread.currentThread()), sig);
     }
 
 
@@ -83,20 +86,54 @@ public class ObserverForActiveTesting extends Observer {
         boolean isSynchronized = cache.isSynchronized(iid, lock, sig);
         if (isSynchronized) {
             ((LinkedList) lockStack.get()).addFirst(lock);
-            analysis.lockBefore(iid, uniqueId(Thread.currentThread()), uniqueId(lock));
+            analysis.lockBefore(iid, uniqueId(Thread.currentThread()), uniqueId(lock),lock);
         } else {
             ((LinkedList) lockStack.get()).addFirst(null);
         }
         ((LinkedList<Integer>) iidStack.get()).addFirst(iid);
     }
 
-    public static void myLockBefore(int iid, int oid) {
-        analysis.lockBefore(iid, uniqueId(Thread.currentThread()), oid);
+    public static void myLockBefore(int iid, int oid, String className) {
+        Class c = null;
+        try {
+            c = Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        analysis.lockBefore(iid, uniqueId(Thread.currentThread()), oid, c);
     }
 
     public static void myLockBefore(int iid, Object lock) {
-        analysis.lockBefore(iid, uniqueId(Thread.currentThread()), uniqueId(lock));
+        analysis.lockBefore(iid, uniqueId(Thread.currentThread()), uniqueId(lock),lock);
     }
+
+		/*Shin -- */
+		public static void myLockAfter(int iid, Object lock, String sig) {
+			analysis.lockAfter(iid, uniqueId(Thread.currentThread()), uniqueId(lock), lock) ;
+		}
+
+		public static void myLockAfter(int iid, int lock, String className) {
+			Class c = null ;
+			try {
+				c = Class.forName(className) ;
+			}
+			catch (ClassNotFoundException e) {
+				e.printStackTrace() ;
+			}
+			analysis.lockAfter(iid, uniqueId(Thread.currentThread()), lock, c) ;
+		}
+
+		public static void myLockAfter(int iid, Object lock) {
+			analysis.lockAfter(iid, uniqueId(Thread.currentThread()), uniqueId(lock), lock) ;
+		}
+
+		public static void myLockAfter(int iid) {
+			LinkedList ls = ((LinkedList) lockStack.get()) ;
+			LinkedList<Integer> is = ((LinkedList<Integer>) iidStack.get()) ;
+			Object lock = ls.getFirst() ;
+			analysis.lockAfter(iid, uniqueId(Thread.currentThread()), uniqueId(lock), lock) ;
+		}
+		/*--Shin*/
 
     public static void myUnlockAfter(int iid) {
         LinkedList ls = ((LinkedList) lockStack.get());
@@ -139,6 +176,15 @@ public class ObserverForActiveTesting extends Observer {
         analysis.startBefore(iid, uniqueId(Thread.currentThread()), uniqueId(t));
     }
 
+    public static void myStartAfter(int iid, Object t) {
+        analysis.startAfter(iid, uniqueId(Thread.currentThread()), t);
+    }
+
+
+    public static void myWaitBefore(int iid, Object lock) {
+        analysis.waitBefore(iid, uniqueId(Thread.currentThread()), uniqueId(lock));
+    }
+
     public static void myWaitAfter(int iid, Object lock) {
         analysis.waitAfter(iid, uniqueId(Thread.currentThread()), uniqueId(lock));
     }
@@ -156,19 +202,117 @@ public class ObserverForActiveTesting extends Observer {
     }
 
     public static void myReadBefore(int iid, Object o, int field) {
-        analysis.readBefore(iid, uniqueId(Thread.currentThread()), id(o, field));
+        if (counters.needToIgnore(iid)) return;
+        analysis.readBefore(iid, uniqueId(Thread.currentThread()), id(o, field), false);
     }
 
     public static void myReadBefore(int iid, int clss, int field) {
-        analysis.readBefore(iid, uniqueId(Thread.currentThread()), idInt(clss, field));
+        if (counters.needToIgnore(iid)) return;
+        analysis.readBefore(iid, uniqueId(Thread.currentThread()), idInt(clss, field), false);
+    }
+
+    public static void myReadAfter(int iid, Object o, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.readAfter(iid, uniqueId(Thread.currentThread()), id(o, field), false);
+    }
+
+    public static void myReadAfter(int iid, int clss, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.readAfter(iid, uniqueId(Thread.currentThread()), idInt(clss, field), false);
+    }
+
+    public static void myVReadBefore(int iid, Object o, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.readBefore(iid, uniqueId(Thread.currentThread()), id(o, field), true);
+    }
+
+    public static void myVReadBefore(int iid, int clss, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.readBefore(iid, uniqueId(Thread.currentThread()), idInt(clss, field), true);
     }
 
     public static void myWriteBefore(int iid, Object o, int field) {
-        analysis.writeBefore(iid, uniqueId(Thread.currentThread()), id(o, field));
+        if (counters.needToIgnore(iid)) return;
+        analysis.writeBefore(iid, uniqueId(Thread.currentThread()), id(o, field), false);
     }
 
     public static void myWriteBefore(int iid, int clss, int field) {
-        analysis.writeBefore(iid, uniqueId(Thread.currentThread()), idInt(clss, field));
+        if (counters.needToIgnore(iid)) return;
+        analysis.writeBefore(iid, uniqueId(Thread.currentThread()), idInt(clss, field), false);
     }
 
+    public static void myWriteAfter(int iid, Object o, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.writeAfter(iid, uniqueId(Thread.currentThread()), id(o, field), false);
+    }
+
+    public static void myWriteAfter(int iid, int clss, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.writeAfter(iid, uniqueId(Thread.currentThread()), idInt(clss, field), false);
+    }
+
+    public static void myVWriteBefore(int iid, Object o, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.writeBefore(iid, uniqueId(Thread.currentThread()), id(o, field), true);
+    }
+
+    public static void myVWriteBefore(int iid, int clss, int field) {
+        if (counters.needToIgnore(iid)) return;
+        analysis.writeBefore(iid, uniqueId(Thread.currentThread()), idInt(clss, field), true);
+    }
+
+
+    public static void myWriteAfter(int iid, String local, Object value, String type) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, type);
+    }
+
+    public static void myWriteAfter(int iid, String local, byte value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Byte");
+    }
+
+    public static void myWriteAfter(int iid, String local, char value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Character");
+    }
+
+    public static void myWriteAfter(int iid, String local, short value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Short");
+    }
+
+    public static void myWriteAfter(int iid, String local, int value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Integer");
+    }
+
+    public static void myWriteAfter(int iid, String local, long value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Long");
+    }
+
+    public static void myWriteAfter(int iid, String local, float value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Float");
+    }
+
+    public static void myWriteAfter(int iid, String local, double value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Double");
+    }
+
+    public static void myWriteAfter(int iid, String local, boolean value) {
+        analysis.writeAfter(iid, Thread.currentThread(), local, value, "java.lang.Boolean");
+    }
+
+    public static void myOpenDeterministicBlock(int iid) {
+        analysis.openDeterministicBlock(uniqueId(Thread.currentThread()));
+    }
+
+    public static void myCloseDeterministicBlock(int iid) {
+        analysis.closeDeterministicBlock(uniqueId(Thread.currentThread()));
+    }
+
+    /** Parameter 'invariant' must be serializable. */
+    public static void requireDeterministic(Object invariant) {
+        analysis.requireDeterministic(uniqueId(Thread.currentThread()), invariant);
+    }
+
+    /** Parameter 'invariant' must be serializable. */
+    public static void assertDeterministic(Object invariant) {
+        analysis.assertDeterministic(uniqueId(Thread.currentThread()), invariant);
+    }
 }

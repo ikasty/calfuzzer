@@ -2,6 +2,7 @@ package javato.activetesting;
 
 import javato.activetesting.activechecker.ActiveChecker;
 import javato.activetesting.analysis.AnalysisImpl;
+import javato.activetesting.analysis.Observer;
 import javato.activetesting.igoodlock.GoodlockDS;
 import javato.activetesting.reentrant.IgnoreRentrantLock;
 import javato.activetesting.common.Parameters;
@@ -49,7 +50,7 @@ public class IGoodlockAnalysis extends AnalysisImpl {
         }
     }
 
-    public void lockBefore(Integer iid, Integer thread, Integer lock) {
+    public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) {
         synchronized (ActiveChecker.lock) {
             if (ignoreRentrantLock.lockBefore(thread, lock)) {
                 gl.lock(iid, thread, lock);
@@ -68,10 +69,10 @@ public class IGoodlockAnalysis extends AnalysisImpl {
     public void newExprAfter(Integer iid, Integer object, Integer objOnWhichMethodIsInvoked) {
     }
 
-    public void methodEnterBefore(Integer iid) {
+    public void methodEnterBefore(Integer iid, Integer thread) {
     }
 
-    public void methodExitAfter(Integer iid) {
+    public void methodExitAfter(Integer iid, Integer thread) {
     }
 
     public void startBefore(Integer iid, Integer parent, Integer child) {
@@ -89,17 +90,21 @@ public class IGoodlockAnalysis extends AnalysisImpl {
     public void joinAfter(Integer iid, Integer parent, Integer child) {
     }
 
-    public void readBefore(Integer iid, Integer thread, Long memory) {
+    public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
     }
 
-    public void writeBefore(Integer iid, Integer thread, Long memory) {
+    public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
     }
+
+    public void writeAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+    }
+
 
     public void finish() {
         synchronized (ActiveChecker.lock) {
             int nDeadlocks;
             nDeadlocks = gl.dumpDeadlocks();
-            Parameters.writeIntegerList(Parameters.ERROR_LIST_FILE, nDeadlocks);
+            Observer.writeIntegerList(Parameters.ERROR_LIST_FILE, nDeadlocks);
         }
     }
 }

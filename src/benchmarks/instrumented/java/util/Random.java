@@ -6,7 +6,7 @@
  */
 
 package benchmarks.instrumented.java.util;
-import sun.misc.AtomicLong;
+import java.util.concurrent.atomic.AtomicLong;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -83,7 +83,7 @@ class Random implements java.io.Serializable {
      * @see     benchmarks.instrumented.java.util.Random#setSeed(long)
      */
     public Random(long seed) {
-        this.seed = AtomicLong.newAtomicLong(0L);
+        this.seed = new AtomicLong(0L);
         setSeed(seed);
     }
 
@@ -112,7 +112,7 @@ class Random implements java.io.Serializable {
      */
     synchronized public void setSeed(long seed) {
         seed = (seed ^ multiplier) & mask;
-        while(!this.seed.attemptSet(seed));
+        while(!this.seed.compareAndSet(this.seed.get(), seed));
     	haveNextNextGaussian = false;
     }
 
@@ -145,7 +145,7 @@ class Random implements java.io.Serializable {
         do {
           oldseed = seed.get();
           nextseed = (oldseed * multiplier + addend) & mask;
-        } while (!seed.attemptUpdate(oldseed, nextseed));
+        } while (!seed.compareAndSet(oldseed, nextseed));
         return (int)(nextseed >>> (48 - bits));
     }
 
@@ -481,7 +481,7 @@ class Random implements java.io.Serializable {
         if (seedVal < 0)
           throw new java.io.StreamCorruptedException(
                               "Random: invalid seed");
-        seed = AtomicLong.newAtomicLong(seedVal);
+        seed = new AtomicLong(seedVal);
         nextNextGaussian = fields.get("nextNextGaussian", 0.0);
         haveNextNextGaussian = fields.get("haveNextNextGaussian", false);
     }

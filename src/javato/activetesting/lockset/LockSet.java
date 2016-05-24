@@ -36,6 +36,7 @@ import java.util.TreeSet;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 public class LockSet extends TreeSet {
+    public final static LockSet emptySet = new LockSet();
 
     public LockSet() {
         super();

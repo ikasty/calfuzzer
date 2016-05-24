@@ -2,6 +2,7 @@ package javato.activetesting.lockset;
 
 
 import javato.activetesting.analysis.Observer;
+import javato.activetesting.igoodlock.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -45,6 +46,7 @@ public class LockSetTracker {
     private Map<Integer, LinkedList<Integer>> threadsToIidStack = new TreeMap<Integer, LinkedList<Integer>>();
     private Map<Integer, LinkedList<Integer>> threadsToLockStack = new TreeMap<Integer, LinkedList<Integer>>();
     private Map<Integer, Integer> holdsLockToThread = new TreeMap<Integer, Integer>();
+    boolean isDeadlock = false;
     //private ArrayList<String> iidToLineMap = Observer.getIidToLineMap(Parameters.iidToLineMapFile);
 
     /**
@@ -73,7 +75,8 @@ public class LockSetTracker {
         }
         lockStack.addLast(lockId);
 
-        if (isDeadlock(thread, lockId)) {
+        if (!isDeadlock && isDeadlock(thread, lockId)) {
+            isDeadlock = true;
             System.err.println("##############################################################");
             System.err.println("Real Deadlock Detected");
             System.err.println("##############################################################");
@@ -142,6 +145,14 @@ public class LockSetTracker {
         }
     }
 
+    public Pair<Integer,Integer> locationsInvolvedInDeadlock(Integer threadId, Integer lockId) {
+        Integer iid1 = threadsToIidStack.get(threadId).getLast();
+        Integer iid2;
+        Integer otherThread = holdsLockToThread.get(lockId);
+        LinkedList<Integer> iids = threadsToIidStack.get(otherThread);
+        return new Pair<Integer,Integer>(iid1,iids.getLast());
+    }
+
     /**
      * returns a list of the locations at which locks in the current lockset of thread are acquired
      * first element in the list being the outermost lock
@@ -187,4 +198,10 @@ public class LockSetTracker {
         return (new LockSet(ls));
     }
 
+
+    public Integer getLockAcquireIID(Integer thread, Integer lock) {
+        LinkedList<Integer> ls = threadsToLockStack.get(thread);
+        int index = ls.indexOf(lock);
+        return threadsToIidStack.get(thread).get(index);
+    }
 }

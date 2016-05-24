@@ -45,7 +45,7 @@ public class InstrumentorForActiveTesting {
         Visitor.setObserverClass("javato.activetesting.analysis.ObserverForActiveTesting");
         TransformClass processor = new TransformClass();
         processor.processAllAtOnce(args, pv);
-        Visitor.dumpIidToLine(Parameters.iidToLineMapFile);
+        Visitor.dumpIidToLine();
         pv.writeSymTblSize();
     }
 }
