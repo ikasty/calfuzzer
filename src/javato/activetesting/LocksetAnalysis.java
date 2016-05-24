@@ -78,7 +78,15 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 	}
 
-	private void printStackTrace(Integer thread, Integer iid) {
+	private void reportDatarace(Integer thread, Integer iid, boolean isWrite) {
+		System.out.print("LocksetAnalysis.java ERROR: Detect data race at ");
+		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(iid));
+		System.out.print(" with " + (isWrite ? "write" : "read") + " operation\n");
+
+		printStackTrace(thread, iid);
+	}
+
+	private synchronized void printStackTrace(Integer thread, Integer iid) {
 		LinkedList<Integer> st ;
 
 		System.out.println("Stack trace of thread-" + thread) ;
@@ -96,10 +104,12 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 	public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) {
 		synchronized(heldLocks) {
-			//Implement here.
-			//Note that a thread can acquire the same lock multiple times without releasing it.
-			//(i.e. recursive locking).
-		}		
+			LinkedList<Integer> currentLock = heldLocks.get(thread);
+			if (currentLock == null) currentLock = new LinkedList<Integer>();
+
+			currentLock.addLast(lock);
+			heldLocks.put(thread, currentLock);
+		}
 	}
 
 	public void lockAfter(Integer iid, Integer thread, Integer lock, Object actualLock) {
@@ -107,10 +117,16 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 	public void unlockAfter(Integer iid, Integer thread, Integer lock) {
 		synchronized(heldLocks) {
-			// Implement here.
-			// You can assume that unlockAfter(iid, thread, lock) is executed 
-			// only after lockBefore(iid, thread, lock) had been executed earlier.
-			// Your code must properly handle the recursive locking case.
+			LinkedList<Integer> currentLock = heldLocks.get(thread);
+			if (currentLock == null) currentLock = new LinkedList<Integer>();
+
+			Integer beforeLock = currentLock.peekLast();
+			if (beforeLock == lock) {
+				currentLock.pollLast();
+			} else {
+				System.out.println("unlockAfter ERROR: lock and unlock doesn't match in " + iid);
+			}
+			heldLocks.put(thread, currentLock);
 		}
 	}
 
@@ -129,21 +145,116 @@ public class LocksetAnalysis extends AnalysisImpl {
 	public void joinAfter(Integer iid, Integer parent, Integer child) {
 	}
 
-	public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {		
-		// Impelemnt here
-		// The code here should update the state of memory, update the candidate lockset
-		// for memory, and raise alarms when a data race occurs.
-		// If memory is volatile, you should not check the data race for it.
+	public synchronized void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+		if (isVolatile) return ;
+
+		LinkedList<Integer> currentLock;
+		MemoryState currentState;
+		Integer firstThreadNo;
+		HashSet<Integer> lockCandidate;
+
+		synchronized (heldLocks) {
+			currentLock = heldLocks.get(thread);
+			if (currentLock == null) currentLock = new LinkedList<Integer>();
+			heldLocks.put(thread, currentLock);
+		}
+
+		synchronized (firstThread) {
+			firstThreadNo = firstThread.get(memory);
+			if (firstThreadNo == null) firstThreadNo = thread;
+		}
+
+		synchronized (state) {
+			currentState = state.get(memory);
+			if (currentState == null) currentState = MemoryState.Virgin;
+
+			switch (currentState) {
+			case Virgin:
+			case SharedModified:
+			case Shared:
+			default:
+				break;
+			case Exclusive:
+				if (firstThreadNo == thread) break;
+				currentState = MemoryState.Shared;
+			}
+			state.put(memory, currentState);
+		}
+
+		synchronized (candidates) {
+			lockCandidate = candidates.get(memory);
+			if (lockCandidate == null) {
+				lockCandidate = new HashSet<Integer>();
+				lockCandidate.addAll(currentLock);
+			}
+
+			lockCandidate.retainAll(currentLock);
+			candidates.put(memory, lockCandidate);
+		}
+
+		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
+			reportDatarace(iid, thread, false);
+		}
 	}
 
 	public void readAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
 	}
 
-	public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
-		// Impelemnt here
-		// The code here should update the state of memory, update the candidate lockset
-		// for memory, and raise alarms when a data race occurs.
-		// If memory is volatile, you should not check the data race for it.
+	public synchronized void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+		if (isVolatile) return ;
+
+		LinkedList<Integer> currentLock;
+		MemoryState currentState;
+		Integer firstThreadNo;
+		HashSet<Integer> lockCandidate;
+
+		synchronized (heldLocks) {
+			currentLock = heldLocks.get(thread);
+			if (currentLock == null) currentLock = new LinkedList<Integer>();
+			heldLocks.put(thread, currentLock);
+		}
+
+		synchronized (firstThread) {
+			firstThreadNo = firstThread.get(memory);
+			if (firstThreadNo == null) {
+				firstThreadNo = thread;
+				firstThread.put(memory, firstThreadNo);
+			}
+		}
+
+		synchronized (state) {
+			currentState = state.get(memory);
+			if (currentState == null) currentState = MemoryState.Virgin;
+
+			switch (currentState) {
+			case Virgin:
+				currentState = MemoryState.Exclusive;
+				break;
+			case Exclusive:
+				if (firstThreadNo == thread) break;
+			case Shared:
+			case SharedModified:
+			default:
+				currentState = MemoryState.SharedModified;
+				break;
+			}
+			state.put(memory, currentState);
+		}
+
+		synchronized (candidates) {
+			lockCandidate = candidates.get(memory);
+			if (lockCandidate == null) {
+				lockCandidate = new HashSet<Integer>();
+				lockCandidate.addAll(currentLock);
+			}
+
+			lockCandidate.retainAll(currentLock);
+			candidates.put(memory, lockCandidate);
+		}
+
+		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
+			reportDatarace(iid, thread, true);
+		}
 	}
 
 	public void writeAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
