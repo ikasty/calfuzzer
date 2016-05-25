@@ -203,13 +203,15 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 		synchronized (candidates) {
 			lockCandidate = candidates.get(memory);
-			if (lockCandidate == null) {
-				lockCandidate = new HashSet<Integer>();
-				lockCandidate.addAll(currentLock);
-			}
+			if (currentState == MemoryState.Shared || currentState == MemoryState.SharedModified) {
+				if (lockCandidate == null) {
+					lockCandidate = new HashSet<Integer>();
+					lockCandidate.addAll(currentLock);
+				}
 
-			lockCandidate.retainAll(currentLock);
-			candidates.put(memory, lockCandidate);
+				lockCandidate.retainAll(currentLock);
+				candidates.put(memory, lockCandidate);
+			}
 		}
 
 		synchronized (lastAccessLoc) {
@@ -217,7 +219,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 			lastAccessLoc.put(memory, new BeforeThreadInfo(iid, thread, false));
 		}
 
-		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
+		if (lockCandidate != null && lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
 			reportDatarace(iid, thread, false, beforeInfo);
 		}
 	}
@@ -269,13 +271,15 @@ public class LocksetAnalysis extends AnalysisImpl {
 
 		synchronized (candidates) {
 			lockCandidate = candidates.get(memory);
-			if (lockCandidate == null) {
-				lockCandidate = new HashSet<Integer>();
-				lockCandidate.addAll(currentLock);
-			}
+			if (currentState == MemoryState.Shared || currentState == MemoryState.SharedModified) {
+				if (lockCandidate == null) {
+					lockCandidate = new HashSet<Integer>();
+					lockCandidate.addAll(currentLock);
+				}
 
-			lockCandidate.retainAll(currentLock);
-			candidates.put(memory, lockCandidate);
+				lockCandidate.retainAll(currentLock);
+				candidates.put(memory, lockCandidate);
+			}
 		}
 
 		synchronized (lastAccessLoc) {
@@ -283,7 +287,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 			lastAccessLoc.put(memory, new BeforeThreadInfo(iid, thread, true));
 		}
 
-		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
+		if (lockCandidate != null && lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
 			reportDatarace(iid, thread, true, beforeInfo);
 		}
 	}
