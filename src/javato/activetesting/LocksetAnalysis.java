@@ -88,10 +88,10 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 	}
 
-	private synchronized void reportDatarace(Integer iid, Integer thread, boolean isWrite, BeforeThreadInfo beforeInfo) {
-		System.out.print("LocksetAnalysis.java WARN: Detect data race at ");
-		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(iid));
-		System.out.print(" with " + (isWrite ? "write" : "read") + " operation\n");
+	private void reportDatarace(Integer iid, Integer thread, boolean isWrite, BeforeThreadInfo beforeInfo) {
+		System.out.println("LocksetAnalysis.java WARN: Detect data race at " +
+							javato.activetesting.analysis.Observer.getIidToLine(iid) +
+							" with " + (isWrite ? "write" : "read") + " operation");
 
 		printStackTrace(thread, iid);
 
@@ -105,7 +105,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 		System.out.print(" by thread#" + lastThread + "\n");
 	}
 
-	private synchronized void printStackTrace(Integer thread, Integer iid) {
+	private void printStackTrace(Integer thread, Integer iid) {
 		LinkedList<Integer> st ;
 
 		System.out.println("Stack trace of thread-" + thread) ;
@@ -164,7 +164,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 	public void joinAfter(Integer iid, Integer parent, Integer child) {
 	}
 
-	public synchronized void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+	public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
 		if (isVolatile) return ;
 
 		LinkedList<Integer> currentLock;
@@ -225,7 +225,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 	public void readAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
 	}
 
-	public synchronized void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
+	public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
 		if (isVolatile) return ;
 
 		LinkedList<Integer> currentLock;
