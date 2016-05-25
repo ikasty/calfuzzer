@@ -89,20 +89,22 @@ public class LocksetAnalysis extends AnalysisImpl {
 	}
 
 	private synchronized void reportDatarace(Integer iid, Integer thread, boolean isWrite, BeforeThreadInfo beforeInfo) {
-		System.out.print("LocksetAnalysis.java WARN: Detect data race at ");
-		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(iid));
-		System.out.print(" with " + (isWrite ? "write" : "read") + " operation\n");
+		System.out.println("LocksetAnalysis.java WARN: Detect data race at " +
+							javato.activetesting.analysis.Observer.getIidToLine(iid) +
+							" with " + (isWrite ? "write" : "read") + " operation");
+
+		if (beforeInfo != null) {
+			Integer lastiid = beforeInfo.x;
+			Integer lastThread = beforeInfo.y;
+			Boolean isBeforeWrite = beforeInfo.z;
+
+			System.out.println("Last access from " +
+								javato.activetesting.analysis.Observer.getIidToLine(lastiid) +
+								" with " + (isBeforeWrite ? "write" : "read") + " operation" +
+								" by thread#" + lastThread);
+		}
 
 		printStackTrace(thread, iid);
-
-		Integer lastiid = beforeInfo.x;
-		Integer lastThread = beforeInfo.y;
-		Boolean isBeforeWrite = beforeInfo.z;
-
-		System.out.print("\t\tLast access from ");
-		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(lastiid));
-		System.out.print(" with " + (isBeforeWrite ? "write" : "read") + " operation");
-		System.out.print(" by thread#" + lastThread + "\n");
 	}
 
 	private synchronized void printStackTrace(Integer thread, Integer iid) {
@@ -173,17 +175,20 @@ public class LocksetAnalysis extends AnalysisImpl {
 		HashSet<Integer> lockCandidate;
 		BeforeThreadInfo beforeInfo = null;
 
+		// get lock list of current thread
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
 			if (currentLock == null) currentLock = new LinkedList<Integer>();
 			heldLocks.put(thread, currentLock);
 		}
 
+		// get thread number which firstly write access current memory
 		synchronized (firstThread) {
 			firstThreadNo = firstThread.get(memory);
 			if (firstThreadNo == null) firstThreadNo = thread;
 		}
 
+		// calculate next state
 		synchronized (state) {
 			currentState = state.get(memory);
 			if (currentState == null) currentState = MemoryState.Virgin;
@@ -201,6 +206,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 			state.put(memory, currentState);
 		}
 
+		// get lock candidates and update it if needed
 		synchronized (candidates) {
 			lockCandidate = candidates.get(memory);
 			if (currentState == MemoryState.Shared || currentState == MemoryState.SharedModified) {
@@ -214,11 +220,13 @@ public class LocksetAnalysis extends AnalysisImpl {
 			}
 		}
 
+		// get last information (if exists) and update with current information
 		synchronized (lastAccessLoc) {
 			beforeInfo = lastAccessLoc.get(memory);
 			lastAccessLoc.put(memory, new BeforeThreadInfo(iid, thread, false));
 		}
 
+		// report data race candidates
 		if (lockCandidate != null && lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
 			reportDatarace(iid, thread, false, beforeInfo);
 		}
@@ -236,12 +244,14 @@ public class LocksetAnalysis extends AnalysisImpl {
 		HashSet<Integer> lockCandidate;
 		BeforeThreadInfo beforeInfo = null;
 
+		// get lock list of current thread
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
 			if (currentLock == null) currentLock = new LinkedList<Integer>();
 			heldLocks.put(thread, currentLock);
 		}
 
+		// get thread number which firstly write access current memory
 		synchronized (firstThread) {
 			firstThreadNo = firstThread.get(memory);
 			if (firstThreadNo == null) {
@@ -250,6 +260,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 			}
 		}
 
+		// calculate next state
 		synchronized (state) {
 			currentState = state.get(memory);
 			if (currentState == null) currentState = MemoryState.Virgin;
@@ -269,6 +280,7 @@ public class LocksetAnalysis extends AnalysisImpl {
 			state.put(memory, currentState);
 		}
 
+		// get lock candidates and update it if needed
 		synchronized (candidates) {
 			lockCandidate = candidates.get(memory);
 			if (currentState == MemoryState.Shared || currentState == MemoryState.SharedModified) {
@@ -282,11 +294,13 @@ public class LocksetAnalysis extends AnalysisImpl {
 			}
 		}
 
+		// get last information (if efxists) and update with current information
 		synchronized (lastAccessLoc) {
 			beforeInfo = lastAccessLoc.get(memory);
 			lastAccessLoc.put(memory, new BeforeThreadInfo(iid, thread, true));
 		}
 
+		// report data race candidates
 		if (lockCandidate != null && lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
 			reportDatarace(iid, thread, true, beforeInfo);
 		}
