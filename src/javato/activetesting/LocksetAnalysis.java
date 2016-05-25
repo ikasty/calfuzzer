@@ -88,21 +88,23 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 	}
 
-	private void reportDatarace(Integer iid, Integer thread, boolean isWrite, BeforeThreadInfo beforeInfo) {
+	private synchronized void reportDatarace(Integer iid, Integer thread, boolean isWrite, BeforeThreadInfo beforeInfo) {
 		System.out.println("LocksetAnalysis.java WARN: Detect data race at " +
 							javato.activetesting.analysis.Observer.getIidToLine(iid) +
 							" with " + (isWrite ? "write" : "read") + " operation");
 
 		printStackTrace(thread, iid);
 
-		Integer lastiid = beforeInfo.x;
-		Integer lastThread = beforeInfo.y;
-		Boolean isBeforeWrite = beforeInfo.z;
+		if (beforeInfo != null) {
+			Integer lastiid = beforeInfo.x;
+			Integer lastThread = beforeInfo.y;
+			Boolean isBeforeWrite = beforeInfo.z;
 
-		System.out.print("\t\tLast access from ");
-		System.out.print(javato.activetesting.analysis.Observer.getIidToLine(lastiid));
-		System.out.print(" with " + (isBeforeWrite ? "write" : "read") + " operation");
-		System.out.print(" by thread#" + lastThread + "\n");
+			System.out.print("\t\tLast access from ");
+			System.out.print(javato.activetesting.analysis.Observer.getIidToLine(lastiid));
+			System.out.print(" with " + (isBeforeWrite ? "write" : "read") + " operation");
+			System.out.print(" by thread#" + lastThread + "\n");
+		}
 	}
 
 	private void printStackTrace(Integer thread, Integer iid) {
@@ -165,14 +167,14 @@ public class LocksetAnalysis extends AnalysisImpl {
 	}
 
 	public void readBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
-		if (isVolatile) return ;
+/*		if (isVolatile) return ;
 
 		LinkedList<Integer> currentLock;
 		MemoryState currentState;
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
-		BeforeThreadInfo beforeInfo = null;
-
+		BeforeThreadInfo beforeInfo = null;*/
+if (memory == 326417514517l) reportDatarace(iid, thread, true, null);/*
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
 			if (currentLock == null) currentLock = new LinkedList<Integer>();
@@ -218,22 +220,22 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, false, beforeInfo);
-		}
+//			reportDatarace(iid, thread, false, beforeInfo);System.out.println("Memory access: " + memory);
+		}*/
 	}
 
 	public void readAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
 	}
 
 	public void writeBefore(Integer iid, Integer thread, Long memory, boolean isVolatile) {
-		if (isVolatile) return ;
+/*		if (isVolatile) return ;
 
 		LinkedList<Integer> currentLock;
 		MemoryState currentState;
 		Integer firstThreadNo;
 		HashSet<Integer> lockCandidate;
-		BeforeThreadInfo beforeInfo = null;
-
+		BeforeThreadInfo beforeInfo = null;*/
+if (memory == 326417514517l) reportDatarace(iid, thread, true, null);/*
 		synchronized (heldLocks) {
 			currentLock = heldLocks.get(thread);
 			if (currentLock == null) currentLock = new LinkedList<Integer>();
@@ -284,8 +286,8 @@ public class LocksetAnalysis extends AnalysisImpl {
 		}
 
 		if (lockCandidate.size() == 0 && currentState == MemoryState.SharedModified) {
-			reportDatarace(iid, thread, true, beforeInfo);
-		}
+//			reportDatarace(iid, thread, true, beforeInfo); System.out.println("Memory access: " + memory);
+		}*/
 	}
 
 	public void writeAfter(Integer iid, Integer thread, Long memory, boolean isVolatile) {
