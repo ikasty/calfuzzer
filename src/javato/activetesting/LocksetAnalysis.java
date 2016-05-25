@@ -121,6 +121,16 @@ public class LocksetAnalysis extends AnalysisImpl {
 				}
 			}
 		}
+
+		System.out.println("Lock trace of thread-" + thread) ;
+		synchronized (heldLocks) {
+			LinkedList<Integer> currentLock = heldLocks.get(thread);
+			if (currentLock != null) {
+				for (Iterator<Integer> itr = currentLock.iterator() ; itr.hasNext() ; ) {
+					System.out.println("\t lock id " + itr.next());
+				}
+			}
+		}	
 	}
 
 	public void lockBefore(Integer iid, Integer thread, Integer lock, Object actualLock) {
