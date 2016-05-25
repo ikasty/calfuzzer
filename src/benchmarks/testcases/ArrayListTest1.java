@@ -26,6 +26,7 @@ public class ArrayListTest1 extends Thread {
                 break;
 
             case 2:
+				try{ Thread.sleep(10); } catch (Exception e) {}
                 al1.clear();
                 break;
 
