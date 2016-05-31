@@ -18,6 +18,7 @@ public class ArrayListTest1 extends Thread {
 
         switch (c) {
             case 0:
+	        try{ Thread.sleep(30); } catch (Exception e) {}
                 al1.add(o1);
                 break;
 
@@ -26,7 +27,6 @@ public class ArrayListTest1 extends Thread {
                 break;
 
             case 2:
-		try{ Thread.sleep(100); } catch (Exception e) {}
                 al1.clear();
                 break;
 
@@ -39,7 +39,7 @@ public class ArrayListTest1 extends Thread {
                 break;
 
             case 5:
-		try{ Thread.sleep(20); } catch (Exception e) {}
+		try{ Thread.sleep(100); } catch (Exception e) {}
                 al1.remove(o1);
                 break;
 
